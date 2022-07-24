@@ -95,9 +95,9 @@ int main() {
 		this allows us to manually assign a location to each texture
 		using glUniform1i where the 1 integer that is going to be set
 		to a specific texture uniform is it's location.
-		
+
 		This location is also called TEXTURE UNIT and it's 0 by default.
-		
+
 		GL_TEXTURE0 in glActiveTexture(GL_TEXTURE0) is the texture unit
 		that is going to be used.
 	*/
@@ -125,7 +125,7 @@ int main() {
 	// Must be called before loading an image.
 	stbi_set_flip_vertically_on_load(true);
 
-	unsigned char *data = stbi_load("./container.jpg", &width, &height, &nrChannels, 0);
+	unsigned char* data = stbi_load("./container.jpg", &width, &height, &nrChannels, 0);
 
 	if (data) {
 		// Create texture
