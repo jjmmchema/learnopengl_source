@@ -49,7 +49,6 @@ public:
 
 	// Use/Activate the shader
 	void use() {
-		// Every shader and rendering after glUseProgram will use this program obj and it's shaders
 		glUseProgram(ID);
 	}
 
@@ -136,6 +135,10 @@ private:
 			std::cout << "ERROR::SHADER::PROGRAM::LINK_FAILED\n" << infoLog << std::endl;
 			return 0; // id of 0 is interpreted as nothing
 		}
+
+		// glLinkProgram creates a program object that can be activated.
+		// Every shader and rendering after glUseProgram will use this program obj and it's shaders
+		glUseProgram(program);
 
 		// Shaders that've been linked into the program object can be deleted
 		glDeleteShader(vertexShader);

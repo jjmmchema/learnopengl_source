@@ -1,9 +1,11 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "shader.h"
-#include "stb_image.h"
+#include "std_image.h"
 
 #include <iostream>
+
+using namespace std;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
@@ -21,7 +23,7 @@ int main() {
 	// Create window object
 	GLFWwindow* window = glfwCreateWindow(800, 600, "Learning OpenGL", NULL, NULL);
 	if (window == NULL) {
-		std::cout << "Failed to create GLFW window" << std::endl;
+		cout << "Failed to create GLFW window" << endl;
 		glfwTerminate();
 		return -1;
 	}
@@ -33,7 +35,7 @@ int main() {
 
 	// Initialize glad and load all OpenGL function pointers.
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-		std::cout << "Failed to initialize GLAD" << std::endl;
+		cout << "Failed to initialize GLAD" << endl;
 		return -1;
 	}
 
@@ -41,17 +43,16 @@ int main() {
 	Shader shaderProgram("shader.vs", "shader.fs");
 
 	// ---- TRIANGLE VERTICES ---- //
-
 	float vertices[] = {
 		// xyz -> position, rgb -> color, st -> texture coords
 		//   x,     y,   z,     r,    g,   b,     s,    t,
 		  0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
 		  0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
 		 -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-		 -0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f
+		 -0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
 	};
 
-	unsigned int indices[] = {
+	float indices[] = {
 		0, 1, 3,
 		1, 2, 3
 	};
@@ -83,49 +84,23 @@ int main() {
 	glEnableVertexAttribArray(2);
 
 	// ---- LOAD AND CREATE TEXTURE ---- //
-	// Create texture objects
-	unsigned int texture1, texture2;
-	glGenTextures(1, &texture1);
-	glGenTextures(1, &texture2);
-	/*
-		Textures have a "location" value in order
-		to set multiple textures at once in a fragment shader.
-		This is the reason why in shader.fs texture1 has a type
-		of uniform (sampler2D just says it's a texture) because
-		this allows us to manually assign a location to each texture
-		using glUniform1i where the 1 integer that is going to be set
-		to a specific texture uniform is it's location.
-		
-		This location is also called TEXTURE UNIT and it's 0 by default.
-		
-		GL_TEXTURE0 in glActiveTexture(GL_TEXTURE0) is the texture unit
-		that is going to be used.
-	*/
+	// Create texture object
+	unsigned int texture;
+	glGenTextures(1, &texture);
 	glActiveTexture(GL_TEXTURE0);
-	/*
-		After glActiveTexture, a subsequent glBindTexture will
-		bind the current active texture unit to the texture passed
-		in it, in this case it will be bound texture1
-	*/
-	glBindTexture(GL_TEXTURE_2D, texture1);
+	glBindTexture(GL_TEXTURE_2D, texture); // Bind texture
 
 	// Texture wrapping on bound texture
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
+	
 	// Texture filtering on bound texture
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	// Load the first image. width -> image width, height -> image height, nrChannels -> number of color channels
+	// Load the image. width -> image width, height -> image height, nrChannels -> number of color channels
 	int width, height, nrChannels;
-
-	// In image (0, 0) is top left, in OpenGL (0, 0) is bottom left, if the image isn't
-	// flipped, the rendered result will be upside down.
-	// Must be called before loading an image.
-	stbi_set_flip_vertically_on_load(true);
-
-	unsigned char *data = stbi_load("./container.jpg", &width, &height, &nrChannels, 0);
+	unsigned char* data = stbi_load("./container.jpg", &width, &height, &nrChannels, 0);
 
 	if (data) {
 		// Create texture
@@ -146,75 +121,40 @@ int main() {
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else {
-		std::cout << "Failed to load texture" << std::endl;
+		cout << "Failed to load texture" << endl;
 	}
 
 
 	// Good practice to free image from memory
 	stbi_image_free(data);
 
-	// Now activate, bind and configure second texture
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, texture2);
-
-	// Texture wrapping
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// Texture filtering
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	// Load the second image.
-	data = stbi_load("./awesomeface.png", &width, &height, &nrChannels, 0);
-
-	if (data) {
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		// Generate mipmap
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else {
-		std::cout << "Failed to load texture" << std::endl;
-	}
-
-	stbi_image_free(data);
-
-	// Tell OpenGL to which texture unit each shader sampler2D belongs to
-	shaderProgram.use();
-	shaderProgram.setInt("texture1", 0); // == glUniform1i(glGetUniformLocation(shaderProgram.ID, "texture1"), 0);
-	shaderProgram.setInt("texture2", 1);
-
 	// App main loop
-	while (!glfwWindowShouldClose(window))
-	{
-		// input
+	while (!glfwWindowShouldClose(window)) {
+
+		// ---INPUT---
 		processInput(window);
 
-		// render
+		// ---RENDERING COMMANDS---
+		// Assign a color to GL_COLOR_BUFFER_BIT and color the window
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		// bind Texture
-		glBindTexture(GL_TEXTURE_2D, texture1);
+		// Uniform
 
-		// render container
+		// Bind texture
+		glBindTexture(GL_TEXTURE_2D, texture);
+
+		// Use shader.h
 		shaderProgram.use();
 
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture1);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, texture2);
-
+		// Drawing the rectangle
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-		glfwSwapBuffers(window);
+		// ---CHECK & CALL EVENTS AND SWAP BUFFERS---
 		glfwPollEvents();
+		glfwSwapBuffers(window);
 	}
-
-	// de-allocate all resources
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);
 
 	glfwTerminate();
 	return 0;
@@ -222,11 +162,19 @@ int main() {
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+	/*
+		Callback function called every time the user
+		resizes the window. The viewport doesn't get resized with the window 
+		itself, so this is an overloaded function that takes a GLFWwindow and 
+		the new width and height to set the new dimension of the glViewport.
+	*/
 	glViewport(0, 0, width, height);
 }
 
 
 void processInput(GLFWwindow* window) {
+	// If escape is pressed while window is focused, tell glfw that window should close
+	// glfwGetKey(window, GLFW_KEY) -> GLFW_PRESS if key is pressed else GLFW_RELEASE
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 }
