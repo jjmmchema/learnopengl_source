@@ -183,8 +183,6 @@ int main() {
 		//// transform also becomes a matrix that scales a vector by 0.5 (multiplies all vertex position vector by 0.5)
 		//transform = glm::scale(transform, glm::vec3(0.5f, 0.5f, 0.5f));
 
-
-
 		// First, transform is a 4x4 identity matrix
 		glm::mat4 transform = glm::mat4(1.0f);
 		// transform becomes a matrix that translates a vector (adds the specified vector to each vertex position vector)
@@ -201,6 +199,13 @@ int main() {
 
 		shaderProgram.use();
 		glBindVertexArray(VAO);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		transform = glm::mat4(1.0f);
+		transform = glm::scale(transform, glm::vec3(sin(glfwGetTime()), sin(glfwGetTime()), 1.0f));
+		transform = glm::translate(transform, glm::vec3(-0.5f, 0.5f, 0.0f));
+		
+		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glfwSwapBuffers(window);
