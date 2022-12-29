@@ -3,14 +3,23 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <stb/stb_image.h>
 #include "shader.h"
-#include "stb_image.h"
 
 #include <iostream>
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
+
+// For defining a camera system
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);  // Position vector
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);  // Direction vector
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);  // Upwards pointing vector
+
+// Variables for deltaTime
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
 
 
 int main() {
@@ -175,14 +184,6 @@ int main() {
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 
-
-	// ----- COORDINATE SYSTEMS ----- //
-
-	// Model matrix, transforms vertex coords. to world coords.
-	//glm::mat4 model = glm::mat4(1.0f);
-	//model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-
-
 	// View matrix, move the scene a bit forward (-z axis) to see it
 	glm::mat4 view = glm::mat4(1.0f);
 	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
@@ -191,18 +192,10 @@ int main() {
 	glm::mat4 projection;			// fov, aspect ratio, near plane, far plane
 	projection = glm::perspective(glm::radians(45.f), 800.0f / 600.0f, 0.1f, 100.0f);
 
-	// ----- COORDINATE SYSTEMS ----- //
-
-
-	// ----- Z-BUFFER (DEPTH BUFFER) ----- //
-
-	// Enable depth test
+	// Enable depth test (z-buffer or depth buffer)
 	glEnable(GL_DEPTH_TEST);
 
-	// ----- Z-BUFFER (DEPTH BUFFER) ----- //
-
-
-	// ----- MORE CUBES ----- //
+	// Cube positions for drawing multiple cubes
 
 	glm::vec3 cubePositions[] = {
 		glm::vec3( 0.0f,  0.0f,   0.0f),
@@ -217,12 +210,76 @@ int main() {
 		glm::vec3(-1.3f,  1.0f,  -1.5f)
 	};
 
-	// ----- MORE CUBES ----- //
+
+	// ----- CAMERA ----- //
+
+	/*
+		Needed to define a camera:
+		a) Position in world space
+		b) Camera direction
+		c) A vector pointing to the right
+		d) A vector pointing upwards from the camera
+	*/
+
+	// 3.0f in z-axis moves the camera backwards
+	//glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 	
+	// The camera points at the origin of the scene
+	//glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+
+	/*
+		The camera direction vector is given by subtracting the
+		focus point (origin) from the camera position vector, i.e.
+		cameraTarget - cameraPos,
+		but since by convention the camera points towards the
+		negative z-axis, the substraction order is switched:
+		cameraPos - cameraTarget
+	*/
+	//glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
+
+
+	/*
+		The right vector represents the positive x-axis of the camera space.
+		If cameraDirection is a vector with only a non-zero z-component, we
+		can get this right vector by defining a unit vector in the +y direction
+		and then apply the cross product between both.
+		Remember that the cross product gives a new vector perpendicular to the plane
+		defined by both vectors.
+		Therefore, the cross product between the cameraDirection and the +y vector
+		will result in a vector pointing at the +x or -x axis, depending of the
+		order of the operands.
+	*/
+	//glm::vec3 globalUp = glm::vec3(0.0f, 1.0f, 0.0f);
+	//glm::vec3 cameraRight = glm::normalize(glm::cross(globalUp, cameraDirection));
+
+	// And the cross product between the cameraDirection (a vector pointing in the +z camera axis)
+	// and the cameraRight (a vector pointing in the +x camera axis) gives a new vector perpendicular to both
+	// that will point directly upwards from the camera.
+
+	// No glm::normalize because both vector are already normalized
+	//glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
+
+	
+	/*
+		Read LaTex notes for explanation about the lookAt matrix.
+		In summary, lookAt matrix will be used to transform any vector
+		to the camera's coordinate space by multiplying it with this matrix.
+	*/
+	//glm::mat4 view;
+	//				// Camera position            // Camera target             // Vector pointing upwards from the camera
+	//view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+	// ----- CAMERA ----- //
 
 	// App main loop
 	while (!glfwWindowShouldClose(window))
-	{
+	{	
+		// Per-frame logic
+		float currentFrame = glfwGetTime();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
+
+
 		// input
 		processInput(window);
 
@@ -235,43 +292,39 @@ int main() {
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, texture2);
 
-
-		// ----- COORDINATE SYSTEMS ----- //
-
-		// Model matrix now rotates vertices over time
-		//model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
-
-		// Get location of all matrices uniforms
-		int modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
-		int viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
+		// Get location of needed matrix uniforms
 		int projectionLoc = glGetUniformLocation(shaderProgram.ID, "projection");
 
 		// Send matrices data to the respective uniforms
-		//glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-		// ----- COORDINATE SYSTEMS ----- //
 
 		shaderProgram.use();
 		glBindVertexArray(VAO);
 
-		// ----- MORE CUBES ----- //
+		// ----- CAMERA POSITION ----- //
 
+		glm::mat4 view;
+		/*
+			cameraPos + cameraFront is the direction vector to ensure that
+			if the camera moves it keeps pointing at the target
+		*/
+					// camera pos       // camera target      // vector pointing upwards from the camera
+		view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+		shaderProgram.setMat4("view", GL_FALSE, view);
+
+		// ----- CAMERA POSITION ----- //
+
+		// Draw each cube by modyfing the model matrix
 		for (unsigned int i = 0; i < 10; i++) {
 			glm::mat4 model = glm::mat4(1.0f);
 			model = glm::translate(model, cubePositions[i]);
 			float angle = 20.0f * i;
 			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+			// Send matrix data to the respective uniform
 			shaderProgram.setMat4("model", GL_FALSE, model);
 
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
-
-		// ----- MORE CUBES ----- //
-
-
-		//glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -295,4 +348,15 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 void processInput(GLFWwindow* window) {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
+
+	float cameraSpeed = 2.5f * deltaTime;
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		cameraPos += cameraSpeed * cameraFront;
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		cameraPos -= cameraSpeed * cameraFront;
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+
 }
